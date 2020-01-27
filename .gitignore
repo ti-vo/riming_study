@@ -27,7 +27,9 @@ http_server/public/*
 http_server/*.log
 http_server/__pycache__/*
 
+plots/*
 Case.py
+
 CloudCam.py
 DataBuffer.py
 FIT_Lsq.py
