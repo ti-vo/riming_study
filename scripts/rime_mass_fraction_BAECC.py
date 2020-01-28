@@ -47,7 +47,8 @@ MDV_coarse = functions.h.put_in_container(MDV_coarse, MDV, ts=t_center, rg=h_cen
                                 mask=np.isnan(MDV_coarse), var_lims=[-2, 2])
 
 rime_fraction = of.rimed_mass_fraction_dmitri(MDV_coarse['var'])
-rime_fraction = functions.h.put_in_container(rime_fraction, MDV_coarse, var_lims=[0, 1], name="rime mass fraction")
+rime_fraction = functions.h.put_in_container(rime_fraction, MDV_coarse, var_lims=[0, 1], name="rime mass fraction",
+                                             colormap='jet')
 
 fig, ax = functions.pyLARDA.Transformations.plot_timeheight(rime_fraction, title=True, time_diff_jumps=30*60)
 fig.savefig(f'../plots/BAECC_rmf_{t_sta.strftime("%Y%m%d%H%M")}_{t_end.strftime("%Y%m%d%H%M")}.png')

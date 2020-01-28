@@ -3,6 +3,7 @@ import math
 import pyLARDA
 import datetime
 import pyLARDA.helpers as h
+from itertools import groupby
 
 def rolling_window(a, window):
     """
@@ -310,3 +311,47 @@ def apply_function_timeheight_grid(fun, container, new_range, new_time):
                 first_hit_h[y]:first_hit_h[y + 1]])
 
     return out_array
+
+
+def regrid_integer_timeheight(container, new_range, new_time, fraction=0.9):
+    """
+    integer arrays containing e.g. cloudnet bits cannot be interpolated  easily, so I take the element with the highest
+    occurrence in a gridcell in a time-height grid. It has to make up 90% (fraction = 0.9) of the data in there, else
+    the pixel is set to nan
+
+    Args:
+        container:    dict data container
+        new_range:    np.array (1D) defining the new time-height grid
+        new_time:     np.array (1D) defining the new time-height grid
+        fraction:     number between 0 and 1, minimum fraction of pixel type
+
+    Returns:
+        2D array of regridded container['var']
+
+    """
+
+    h_coords = np.digitize(container['rg'], new_range)
+    t_coords = np.digitize(container['ts'], new_time)
+    # make zero the smallest index
+    h_coords = h_coords - np.min(h_coords)
+    t_coords = t_coords - np.min(t_coords)
+    out_array = np.full([len(np.unique(t_coords)), len(np.unique(h_coords))], np.nan)
+
+    # find time/height ranges to average over
+    first_hit_t = np.searchsorted(t_coords, np.arange(0, len(np.unique(t_coords)) + 1))
+    first_hit_h = np.searchsorted(h_coords, np.arange(0, len(np.unique(h_coords)) + 1))
+
+    for x in range(out_array.shape[0]):
+        for y in range(out_array.shape[1]):
+            a = container['var'][first_hit_t[x]:first_hit_t[x+1],
+                first_hit_h[y]:first_hit_h[y + 1]]
+            foo  = [len(list(group)) for key, group in groupby(list(a.flatten()))]
+            key = [key for key, group in groupby(list(a.flatten()))]
+            index = np.argsort(foo)
+
+            if len(index > 0):
+                if foo[index[-1]] >= fraction*len(a.flatten()):
+                    out_array[x, y] = key[index[-1]]
+
+    return out_array
+
