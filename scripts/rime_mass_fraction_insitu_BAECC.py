@@ -1,3 +1,6 @@
+# Using the PIP data set (https://github.com/ti-vo/Snow-Retrievals-2014-2015, forked from dmoisseev), compute the rime
+# mass fraction using the equation given in Kneifel & Moisseev (2020).
+# Plot a time series for a given time period (t_sta to t_end) using larda.
 
 import sys
 sys.path.append('../')

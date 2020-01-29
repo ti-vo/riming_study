@@ -1,3 +1,7 @@
+# compute the rime mass fraction for 20 minute/ 100 m grid according to Kneifel & Moisseev (2020) for a TRIPEX-Pol case.
+# The Cloudnet classification mask is used to only compute it for the ice/ supercooled liquid part of the cloud.
+# plot time-height plot of rime mass fraction using larda
+
 import sys
 sys.path.append('../')
 import functions
