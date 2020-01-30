@@ -3,7 +3,6 @@ sys.path.append('../')
 import functions
 import datetime
 import functions.radar_functions as rf
-import functions.other_functions as of
 import numpy as np
 
 larda = functions.pyLARDA.LARDA().connect('arm_baecc', build_lists=True)
@@ -46,7 +45,7 @@ MDV_coarse = rf.apply_function_timeheight_grid(np.nanmean, MDV_corr, h_new, t_ne
 MDV_coarse = functions.h.put_in_container(MDV_coarse, MDV, ts=t_center, rg=h_center,
                                 mask=np.isnan(MDV_coarse), var_lims=[-2, 2])
 
-rime_fraction = of.rimed_mass_fraction_dmitri(MDV_coarse['var'])
+rime_fraction = rf.rimed_mass_fraction_dmitri(MDV_coarse['var'])
 rime_fraction = functions.h.put_in_container(rime_fraction, MDV_coarse, var_lims=[0, 1], name="rime mass fraction",
                                              colormap='jet')
 

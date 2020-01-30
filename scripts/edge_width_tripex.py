@@ -4,7 +4,6 @@ sys.path.append('../')
 import functions
 import datetime
 import functions.radar_functions as rf
-import functions.other_functions as of
 import numpy as np
 
 larda = functions.pyLARDA.LARDA().connect('optimice_tripex', build_lists=True)
