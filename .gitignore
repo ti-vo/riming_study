@@ -26,7 +26,7 @@ pyLARDA/*.so
 http_server/public/*
 http_server/*.log
 http_server/__pycache__/*
-
+*.toml*
 plots/*
 Case.py
 
