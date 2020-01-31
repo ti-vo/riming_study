@@ -4,6 +4,7 @@ import pyLARDA
 import datetime
 import pyLARDA.helpers as h
 from itertools import groupby
+import matplotlib.pyplot as plt
 
 def rolling_window(a, window):
     """
@@ -103,6 +104,7 @@ def compute_width(spectra, **kwargs):
     widths_array = width_fast(spectra['var'], **kwargs)
     vel_res = abs(np.median(np.diff(spectra['vel'])))
     width = vel_res*widths_array
+    np.putmask(width, (width < 0), np.nan)
 
     return width
 
@@ -131,8 +133,14 @@ def width_fast(spectra, **kwargs):
     # same with reversed view of spectra
     last = bin_number - np.argmax(spectra[:, :, ::-1] > np.repeat(thresh[:, :, np.newaxis], bin_number, axis=2),
                                   axis=2)
-
-    return last-first
+    #fig, ax = plt.subplots(1)
+    #ax.plot(10 * np.log10(spectra[2, 2, :]))
+    #ax.plot((1, 512), (10*np.log10(thresh[2, 2]), 10*np.log10(thresh[2, 2])))
+    #ax.text(500, 10*np.log10(thresh[2,2]), f'width: {last[2,2]-first[2,2]}')
+    #fig.savefig(f'/home/tvogl/shit_{np.random.randint(0,29)}')
+    width = last - first
+    np.putmask(width, width==512, -9999)
+    return width
 
 
 def denoise_and_compute_width(spectra, **kwargs):
@@ -195,8 +203,6 @@ def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelt
         print(f'reading chunk from {timelist[i].strftime("%Y%m%d %H:%M")} to {timelist[i+1].strftime("%Y%m%d %H:%M")}')
         # call larda.read for each time interval
         try:
-            # TODO place this function somewhere smart in the larda structure (within class LARDA?)
-            #  so that larda is definitely defined
             # read in chunks of data with a 5 second overlap
             inp = larda.read(system, variable, [timelist[i], timelist[i + 1] + datetime.timedelta(seconds=5)], rg)
             # this leads to double entries.
@@ -355,6 +361,7 @@ def regrid_integer_timeheight(container, new_range, new_time, fraction=0.9):
 
     return out_array
 
+
 def rimed_mass_fraction_dmitri(vd_mean_pcor_sealevel):
     """
     Function to compute rime mass fraction from mean Doppler velocity
@@ -389,3 +396,41 @@ def rimed_mass_fraction_dmitri(vd_mean_pcor_sealevel):
     rf = np.where(vd_mean_pcor_pos > 2.5, 0.85, rmf_dmitri)
 
     return rf
+
+
+def read_baecc_soundings(varname, time_interval, **kwargs):
+    larda = kwargs['larda']
+    sounding_times = [i[0][0] for i in larda.connectors['SOUNDING'].filehandler['cdf']]
+    sounding_times = [datetime.datetime.strptime(t, '%Y%m%d-%H%M%S') for t in sounding_times]
+    i1 = h.argnearest([h.dt_to_ts(so) for so in sounding_times], h.dt_to_ts(time_interval[0]))
+    i2 = h.argnearest([h.dt_to_ts(so) for so in sounding_times], h.dt_to_ts(time_interval[1]))
+    sounding_times = sounding_times[i1:i2+1]
+    # sounding_times = [si for si in sounding_times if si > time_interval[0] and si < time_interval[1]]
+    data = [larda.read("SOUNDING", varname, [t_sounding], [0, 'max']) for t_sounding in sounding_times]
+    return data
+
+
+def turbulence_broadening(wind_speed, variance_MDV, **kwargs):
+    """
+    compute sigma_T according to Shupe et al. 2008
+    Args:
+        wind_speed: time-height container of horizontal wind
+        variance_MDV: variance of MDV over 1 minute window
+        **theta: beam width in degrees
+
+    Returns:
+
+    """
+    #L = U*t + 2*R*sin (theta/2)
+
+    # KAZR 3 dB beamwidth is 0.3 degrees,
+    # https://www.arm.gov/publications/tech_reports/handbooks/kazr_handbook.pdf
+    theta = 0.3 if not 'theta' in kwargs else kwargs['theta']
+
+    L_s = wind_speed['var'] * 1 + 2 * wind_speed['rg'] * np.sin(theta/360 * np.pi)
+    L_l = wind_speed['var'] * 60 + 2 * wind_speed['rg'] * np.sin(theta/360 * np.pi)
+
+    sigma_T = np.sqrt(variance_MDV * (L_s**(2/3) / (L_l**(2/3) - L_s**(2/3))))
+
+    #sigma_T_container = h.put_in_container(sigma_T, variance_MDV, var_lims=[0, 2], name='sigma_T')
+    return sigma_T
