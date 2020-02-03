@@ -133,11 +133,11 @@ def width_fast(spectra, **kwargs):
     # same with reversed view of spectra
     last = bin_number - np.argmax(spectra[:, :, ::-1] > np.repeat(thresh[:, :, np.newaxis], bin_number, axis=2),
                                   axis=2)
-    #fig, ax = plt.subplots(1)
-    #ax.plot(10 * np.log10(spectra[2, 2, :]))
-    #ax.plot((1, 512), (10*np.log10(thresh[2, 2]), 10*np.log10(thresh[2, 2])))
-    #ax.text(500, 10*np.log10(thresh[2,2]), f'width: {last[2,2]-first[2,2]}')
-    #fig.savefig(f'/home/tvogl/shit_{np.random.randint(0,29)}')
+#    fig, ax = plt.subplots(1)
+#    ax.plot(10 * np.log10(spectra[2, 2, :]))
+#    ax.plot((1, 512), (10*np.log10(thresh[2, 2]), 10*np.log10(thresh[2, 2])))
+#    ax.text(500, 10*np.log10(thresh[2,2]), f'width: {last[2,2]-first[2,2]}')
+#    fig.savefig(f'/home/tvogl/shit_kazr_{np.random.randint(0,29)}')
     width = last - first
     np.putmask(width, width==512, -9999)
     return width
@@ -223,6 +223,8 @@ def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelt
     idx_b = np.logical_and(ts < h.dt_to_ts(time[1]), ts > h.dt_to_ts(time[0]))
     outp = outp[idx_b, :]
     ts = ts[idx_b]
+    idx_a = np.logical_and(inp['rg'] < rg[1], inp['rg'] > rg[0])
+    outp = outp[:, idx_a]
 
     return outp, ts
 
@@ -276,7 +278,7 @@ def isbit(integer, nth_bit):
     return integer & mask > 0
 
 
-def apply_function_timeheight_grid(fun, container, new_range, new_time):
+def apply_function_timeheight_grid(fun, container, new_range, new_time, mask_thres=0.5):
     """
     apply a function, e.g. mean over all elements of a container['var'] belonging to a grid cell in a new time-height
     grid defined by new_range and new_time
@@ -294,7 +296,7 @@ def apply_function_timeheight_grid(fun, container, new_range, new_time):
             array([[  2.33333333,   7.        ],
             [  7.        , 800.        ]])
     """
-    # apply mask of container
+    # apply mask of container, fill with np.nan
     np.putmask(container['var'], container['mask'], np.nan)
 
     h_coords = np.digitize(container['rg'], new_range)
@@ -312,9 +314,12 @@ def apply_function_timeheight_grid(fun, container, new_range, new_time):
 
     for x in range(out_array.shape[0]):
         for y in range(out_array.shape[1]):
-            out_array[x, y] = fun(
-                container['var'][first_hit_t[x]:first_hit_t[x + 1],
-                first_hit_h[y]:first_hit_h[y + 1]])
+            masked_frac = np.sum(container['mask'][first_hit_t[x]:first_hit_t[x + 1],
+                   first_hit_h[y]:first_hit_h[y + 1]]) / (first_hit_t[x + 1] - first_hit_t[x]) * (first_hit_h[y + 1] -
+                                                                                                  first_hit_h[y])
+            out_array[x, y] = np.nan if masked_frac > mask_thres else fun(container['var'][first_hit_t[x]:
+                                                                                           first_hit_t[x + 1],
+                                                                          first_hit_h[y]:first_hit_h[y + 1]])
 
     return out_array
 
@@ -398,7 +403,46 @@ def rimed_mass_fraction_dmitri(vd_mean_pcor_sealevel):
     return rf
 
 
+def rimed_mass_fraction_PIP(pipdata):
+    """
+    compute the rime fraction according to equation (3) in Kneifel & Moisseev (2020)
+
+    Args:
+        pipdata: dictionary containing keys 'Dmax', 'mass', 'PSD' and 'time'
+
+    Returns:
+        rime mass fraction (1D array of length pipdata['time'])
+        timestamp
+    """
+
+   #  compute the mass of unrimed snow
+    m_us = 0.0053 * pipdata['Dmax'] ** 2.05
+    mask = np.isnan(pipdata['mass'])
+    mass = pipdata['mass']
+    N = pipdata['PSD']
+    timestamp = pipdata['time'][0, :]
+
+    np.putmask(m_us, mask, 0)
+    np.putmask(mass, mask, 0)
+    np.putmask(N, mask, 0)
+
+    rmf = 1 - (np.trapz((m_us * pipdata['PSD']), pipdata['Dmax'])) / np.trapz((pipdata['mass'] * pipdata['PSD']),
+                                                                              pipdata['Dmax'])
+    return rmf, timestamp
+
+
 def read_baecc_soundings(varname, time_interval, **kwargs):
+    """
+
+    Args:
+        varname: variable name to be extracted from sounding file, passed on to larda.read(...)
+        time_interval: t_sta and t_end of time window for which sounding should be read in (nearest)
+        **kwargs:
+        **larda
+
+    Returns:
+        list of dictionaries of soundings
+    """
     larda = kwargs['larda']
     sounding_times = [i[0][0] for i in larda.connectors['SOUNDING'].filehandler['cdf']]
     sounding_times = [datetime.datetime.strptime(t, '%Y%m%d-%H%M%S') for t in sounding_times]
@@ -410,6 +454,62 @@ def read_baecc_soundings(varname, time_interval, **kwargs):
     return data
 
 
+def read_wyoming_soundings(varname, time_interval, **kwargs):
+    """
+
+    Args:
+        varname: variable name to be extracted from sounding file, passed on to larda.read(...)
+        time_interval: t_sta and t_end of time window for which sounding should be read in (nearest)
+        **kwargs:
+        **larda
+
+    Returns:
+        list of dictionaries of soundings
+    """
+    larda = kwargs['larda']
+    sounding_times = [i[0][0] for i in larda.connectors['SOUNDING'].filehandler['txt']]
+    sounding_times = [datetime.datetime.strptime(t, '%Y%m%d-%H%M%S') for t in sounding_times]
+    i1 = h.argnearest([h.dt_to_ts(so) for so in sounding_times], h.dt_to_ts(time_interval[0]))
+    i2 = h.argnearest([h.dt_to_ts(so) for so in sounding_times], h.dt_to_ts(time_interval[1]))
+    sounding_times = sounding_times[i1:i2 + 1]
+    # sounding_times = [si for si in sounding_times if si > time_interval[0] and si < time_interval[1]]
+    data = [larda.read("SOUNDING", varname, [t_sounding]) for t_sounding in sounding_times]
+    return data
+
+
+def crop_timeheight(MDV, time_interval, range_interval):
+    t_sta, t_end = time_interval
+    h_sta, h_end = range_interval
+    idx_a = np.logical_and(MDV['rg'] > h_sta, MDV['rg'] < h_end)
+    idx_b = np.logical_and(MDV['ts'] > h.dt_to_ts(t_sta), MDV['ts'] < h.dt_to_ts(t_end))
+    MDV['var'] = MDV['var'][idx_b, :][:, idx_a]
+    MDV['mask'] = MDV['mask'][idx_b, :][:,  idx_a]
+    MDV['ts'] = MDV['ts'][idx_b]
+    MDV['rg'] = MDV['rg'][idx_a]
+    return MDV
+
+
+def remove_broken_timestamp_arm(MDV, **kwargs):
+    """
+    detect time jumps larger than 60 seconds or equal to 0 (same timestamp repeated)
+    Args:
+        MDV: data container (dict) for which broken timestamps should be removed, containing 'ts', 'var' and 'mask'
+        **jump: default is 60 (seconds), value to be marked as a time jump. Set this higher for scanning radar.
+
+    Returns:
+        same dictionary, without the broken timestamps
+
+    """
+    jump_time = 60 if not 'jump' in kwargs else 60
+    time_list = MDV['ts']
+    jump_index = ~((abs(np.diff(time_list)) > jump_time) | (np.diff(time_list) == 0))
+
+    MDV['ts'] = MDV['ts'][np.where(jump_index)[0]]
+    MDV['var'] = MDV['var'][np.where(jump_index)[0]]
+    MDV['mask'] = MDV['mask'][np.where(jump_index)[0]]
+    return MDV
+
+
 def turbulence_broadening(wind_speed, variance_MDV, **kwargs):
     """
     compute sigma_T according to Shupe et al. 2008
@@ -419,6 +519,7 @@ def turbulence_broadening(wind_speed, variance_MDV, **kwargs):
         **theta: beam width in degrees
 
     Returns:
+        the square root of sigma_T^2
 
     """
     #L = U*t + 2*R*sin (theta/2)
@@ -430,7 +531,7 @@ def turbulence_broadening(wind_speed, variance_MDV, **kwargs):
     L_s = wind_speed['var'] * 1 + 2 * wind_speed['rg'] * np.sin(theta/360 * np.pi)
     L_l = wind_speed['var'] * 60 + 2 * wind_speed['rg'] * np.sin(theta/360 * np.pi)
 
-    sigma_T = np.sqrt(variance_MDV * (L_s**(2/3) / (L_l**(2/3) - L_s**(2/3))))
+    sigma_T = np.sqrt(variance_MDV['var'] * (L_s**(2/3) / (L_l**(2/3) - L_s**(2/3))))
 
     #sigma_T_container = h.put_in_container(sigma_T, variance_MDV, var_lims=[0, 2], name='sigma_T')
     return sigma_T
