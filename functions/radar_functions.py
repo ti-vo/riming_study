@@ -206,7 +206,7 @@ def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelt
             # read in chunks of data with a 5 second overlap
             inp = larda.read(system, variable, [timelist[i], timelist[i + 1] + datetime.timedelta(seconds=5)], rg)
             # this leads to double entries.
-            print('apply function...')
+            print('applying function...')
             result = function(inp)
             outp.append(result)
             ts.append(inp['ts'])

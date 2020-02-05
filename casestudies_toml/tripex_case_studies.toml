@@ -1,5 +1,11 @@
 # tripex campaign
 
+
+[case.20181124]
+    time_interval = ['20181124-0600', '20181124-2059']
+    range_interval = [179, 9000]
+    plot_dir = '../plots/TRIPEX_20181124/'
+
 [case.20181223]
     time_interval = ['20181223-0701', '20181223-1559']
     range_interval = [179, 6000]
@@ -9,11 +15,5 @@
     time_interval = ['20190105-0000', '20190105-0959']
     range_interval = [179, 9000]
     plot_dir = '../plots/TRIPEX_20190105/'
-
-[case.20181124]
-    time_interval = ['20181124-0600', '20181124-2059']
-    range_interval = [179, 9000]
-    plot_dir = '../plots/TRIPEX_20181124/'
-
 
 
