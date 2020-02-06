@@ -69,6 +69,7 @@ def plot_casestudy_baecc(case_study):
     variance_container = rf.crop_timeheight(variance_container, [t_sta, t_end], [h_sta, h_end])
     Zg = rf.crop_timeheight(Zg, [t_sta, t_end], [h_sta, h_end])
     Zg['colormap'] = 'jet'
+    Zg['var_lims'] = [-40, 20]
 
     # read in soundings and regrid them to radar bin range resolution, then merge them into one container
     soundings = rf.read_baecc_soundings('windspeed', [t_sta, t_end], larda=larda)
@@ -100,7 +101,7 @@ def plot_casestudy_baecc(case_study):
     # compute the spectrum edge width, using the default values above minimum of spectra:
     widths, ts_widths = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_compute_width, larda=larda)
     spectrum_edge_width = functions.h.put_in_container(widths, MDV, ts=ts_widths, name="spectrum edge width",
-                                                       mask=widths > 6, var_lims=[0, 5])
+                                                       mask=widths > 12, var_lims=[0, 5])
     spectrum_edge_width = functions.pyLARDA.Transformations.interpolate2d(spectrum_edge_width, new_time=MDV['ts'],
                                                                           new_range=MDV['rg'], method='nearest')
 
