@@ -11,8 +11,8 @@ import functools
 import matplotlib
 
 larda = functions.pyLARDA.LARDA().connect('arm_baecc', build_lists=True)
-t_sta = datetime.datetime(2014, 2, 21, 22, 30)
-t_end = datetime.datetime(2014, 2, 21, 22, 34)
+#t_sta = datetime.datetime(2014, 2, 21, 22, 30)
+#t_end = datetime.datetime(2014, 2, 21, 22, 34)
 h_sta = 0
 h_end = 2000
 
@@ -44,7 +44,7 @@ while jumps[i] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0, 0)):
     MDV = rf.remove_broken_timestamp_arm(larda.read("KAZR", "mdv", [t_sta, t_end], [h_sta, h_end]))
     sw = rf.remove_broken_timestamp_arm(larda.read("KAZR", "sw", [t_sta, t_end], [h_sta, h_end]))
 
-
+    Zg['var'] = functions.h.lin2z(Zg['var'])
     widths, ts_widths = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_compute_width,
                                       larda=larda)
     rg_widths = larda.read("KAZR", "spec", [t_sta], [h_sta, h_end])['rg']
@@ -63,6 +63,7 @@ while jumps[i] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0, 0)):
         MDV_all = MDV
         sw_all = sw
         cbh_all = cbh
+        cbh_mask_all = cbh_mask
         rf_all = rf
         widths_all = widths
     else:
@@ -70,8 +71,12 @@ while jumps[i] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0, 0)):
         MDV_all = functions.pyLARDA.Transformations.join(MDV_all, MDV)
         sw_all = functions.pyLARDA.Transformations.join(sw_all, sw)
         cbh_all = functions.pyLARDA.Transformations.join(cbh_all, cbh)
+        cbh_mask_all = functions.pyLARDA.Transformations.join(cbh_mask_all, cbh_mask)
         rf_all = functions.pyLARDA.Transformations.join(rf_all, rf)
         widths_all = functions.pyLARDA.Transformations.join(widths_all, widths)
 
 
 # scatter plots
+plot_dir = '../plots/BAECC_scatter/'
+fig, ax = functions.pyLARDA.Transformations.plot_scatter(Zg_all, MDV_all, identity_line=False, colorbar=True, title=True)
+fig.savefig(plot_dir + f'testplot.png')
