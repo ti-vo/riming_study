@@ -198,7 +198,7 @@ if __name__ == '__main__':
         print('case ' + case)
         dt_interval = [datetime.datetime.strptime(t, '%Y%m%d-%H%M') for t in case_study['time_interval']]
 
-        larda = functions.pyLARDA.LARDA().connect('lacros_dacapo', build_lists=True)
+        larda = functions.pyLARDA.LARDA().connect('lacros_dacapo_gpu', build_lists=True)
         plot_casestudy_dacapo(case_study)
 
     print('\n ...Done...\n')
