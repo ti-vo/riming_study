@@ -93,6 +93,10 @@ fig, ax = functions.pyLARDA.Transformations.plot_scatter(sw_all, MDV_all, identi
 #ax.set_xlim([-3, 8])
 fig.savefig(plot_dir + f'sw_MDV.png')
 
+rmf_all['var'] = np.tile(rmf_all['var'][:, np.newaxis], MDV_all['var'].shape[1])
+rmf_all['rg'] = MDV_all['rg']
+rmf_all['mask'] = rmf_all['var'] < 0
+
 if compute_widths:
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all, MDV_all, identity_line=False, colorbar=True, title=True)
     fig.savefig(plot_dir + f'widths_MDV.png')
@@ -102,9 +106,6 @@ if compute_widths:
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
 
 
-rmf_all['var'] = np.tile(rmf_all['var'][:, np.newaxis], MDV_all['var'].shape[1])
-rmf_all['rg'] = MDV_all['rg']
-rmf_all['mask'] = rmf_all['var'] < 0
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, MDV_all, identity_line=False, colorbar=True, title=True)
 fig.savefig(plot_dir + f'rmf_MDV.png')
