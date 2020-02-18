@@ -155,19 +155,82 @@ def denoise_and_compute_width(spectra, **kwargs):
         spectrum edge width (2D array)
 
     """
-    spec_denoise = spectra['var']
-    for t in range(len(spectra['ts'])):
-        for hi in range(len(spectra['rg'])):
-            spectrum = spectra['var'][t, hi, :]
-            mean, thresh, var, _, _, _, _ = pyLARDA.spec2mom_limrad94.estimate_noise_hs74(spectrum)
-            noise_mask = (spectrum <= (mean + 5 * var))
-            np.putmask(spectrum, noise_mask, np.nan)
-            spec_denoise[t, hi, :] = spectrum
+    spec_denoise = denoise_spectra(spectra, Q=5)
     spectra['var'] = spec_denoise
     width = compute_width(spectra, **kwargs)
 
     return width
 
+
+def denoise_and_get_skewness(spectra):
+    """
+    Args:
+        spectra (dict): larda data container {} of linear power spectra
+
+    Returns:
+        ndarray of skewness
+
+    """
+    spec_denoise = denoise_spectra(spectra, Q=5)
+    spectra['var'] = spec_denoise
+    moments = skewness_from_denoised(spectra)
+    skewness = moments['skew']
+    return skewness
+
+
+def denoise_spectra(spectra, **kwargs):
+    """
+    Args:
+        spectra (dict): larda data container {} of linear power spectra
+        **kwargs:
+            Q (int): Factor of standard deviations above which noise floor will be cut. Defaults to 5
+
+    Returns:
+        ndarray of denoised spectra
+
+    """
+    Q = 5 if not 'Q' in kwargs else kwargs['Q']
+    spec_denoise = spectra['var']
+    for t in range(len(spectra['ts'])):
+        for hi in range(len(spectra['rg'])):
+            spectrum = spectra['var'][t, hi, :]
+            mean, thresh, var, _, _, _, _ = pyLARDA.spec2mom_limrad94.estimate_noise_hs74(spectrum)
+            noise_mask = (spectrum <= (mean + Q * var))
+            np.putmask(spectrum, noise_mask, np.nan)
+            spec_denoise[t, hi, :] = spectrum
+    return spec_denoise
+
+
+def skewness_from_denoised(spectra):
+    """
+
+    Args:
+        spectra (dict): spectra (linear units) with noise floor removed
+
+    Returns:
+        dictionary of ndarrays of moments
+    """
+    no_ranges_tot = len(spectra['rg'])
+    no_times = len(spectra['ts'])
+    moments = {'Ze': np.full((no_times, no_ranges_tot), np.nan),
+               'VEL': np.full((no_times, no_ranges_tot), np.nan),
+               'sw': np.full((no_times, no_ranges_tot), np.nan),
+               'skew': np.full((no_times, no_ranges_tot), np.nan),
+               'kurt': np.full((no_times, no_ranges_tot), np.nan),
+               'mask': np.full((no_times, no_ranges_tot), True)}
+    for iR in range(no_ranges_tot):  # range dimension
+        for iT in range(no_times):  # time dimension
+            signal = spectra['var'][iT, iR, :]  # extract power spectra in chosen range
+            velocity_bins_extr = spectra['vel'] # extract velocity bins in chosen Vdop bin range
+            DoppRes = np.nanmedian(np.diff(spectra['vel']))
+            Ze_lin, _, _, skew, _ = pyLARDA.spec2mom_limrad94.moment_calculation(signal, velocity_bins_extr, DoppRes)
+            moments['Ze'][iT, iR] = Ze_lin  # copy temporary Ze_linear variable to output variable
+            #moments['VEL'][iR_tot, iT] = VEL
+            #moments['sw'][iR_tot, iT] = sw
+            moments['skew'][iT, iR] = skew
+            #moments['kurt'][iR_tot, iT] = kurt
+
+    return moments
 
 def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelta(hours=1), **kwargs):
     """

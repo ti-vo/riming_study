@@ -51,6 +51,11 @@ while piptime[ jumps[i]] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0
     np.putmask(Zg['var'], snr['var'] < 0, np.nan)
 
     Zg['var'] = functions.h.lin2z(Zg['var'])
+
+    skewness, ts_skewness = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_get_skewness, larda=larda)
+    skewness = functions.h.put_in_container(skewness, MDV, ts=ts_skewness, name='skewness', var_units='')
+    skewness = functions.pyLARDA.Transformations.interpolate2d(skewness, new_time=Zg['ts'])
+
     if compute_widths:
         widths, ts_widths = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_compute_width,
                                           larda=larda)
@@ -106,11 +111,13 @@ if compute_widths:
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all, MDV_all, identity_line=False, colorbar=True, title=True)
     fig.savefig(plot_dir + f'widths_MDV.png')
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all, Zg_all, color_by=rmf_all, identity_line=False,
-                                                             colorbar=True, scale='lin', title=True, c_lim=[0,0.8])
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
 
-
+    fig, ax = functions.pyLARDA.Transformations.plot_scatter(skewness, widths_all, color_by=rmf_all, identity_line=False,
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
+    fig.savefig(plot_dir + 'width_skewness_by_rmf.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, MDV_all, identity_line=False, colorbar=True, title=True)
 fig.savefig(plot_dir + f'rmf_MDV.png')
@@ -155,6 +162,10 @@ if compute_widths:
                                                              colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
+    fig, ax = functions.pyLARDA.Transformations.plot_scatter(skewness, widths_all_below, color_by=rmf_all,
+                                                             identity_line=False,
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
+    fig.savefig(plot_dir + 'width_skewness_by_rmf.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(sw_all_below, Zg_all_below, color_by=rmf_all, identity_line=False,
                                                          colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
@@ -185,7 +196,9 @@ if compute_widths:
                                                              colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
-
+    fig, ax = functions.pyLARDA.Transformations.plot_scatter(skewness, widths_all, color_by=rmf_all, identity_line=False,
+                                                            colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
+    fig.savefig(plot_dir + 'width_skewness_by_rmf.png')
 
 sw_all_above = copy.deepcopy(sw_all)
 np.putmask(sw_all_above['var'], cbh_mask_all['var'], np.nan)
