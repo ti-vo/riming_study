@@ -80,7 +80,7 @@ for d in pamtra_datasets.keys():
     SW = {'var' : sw[:, :, 0, i, 0, :], 'mask' : np.ma.getmask(sw[:, :, 0, 0, 0, 0]), 'name' : 'spectrum width',
            'system' : 'PIP / PAMTRA', 'var_unit' : 'm2/s2'}
     skew = {'var': skewness[:, :, 0, i, 0, :], 'mask': np.ma.getmask(skewness[:, :, 0, 0, 0, 0]), 'name': 'skewness',
-          'system': 'PIP / PAMTRA', 'var_unit': 'm3/s3?'}
+          'system': 'PIP / PAMTRA', 'var_unit': 'unitless'}
 
     vel_res = abs(np.median(np.diff(vel_bins[i, :])))
     edge_width = rf.width_fast(functions.h.z2lin(spectra)) * vel_res
