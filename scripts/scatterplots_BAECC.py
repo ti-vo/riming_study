@@ -11,11 +11,10 @@ import functools
 import matplotlib
 
 larda = functions.pyLARDA.LARDA().connect('arm_baecc', build_lists=True)
-#t_sta = datetime.datetime(2014, 2, 21, 22, 30)
-#t_end = datetime.datetime(2014, 2, 21, 22, 34)
-h_sta = 550
+h_sta = 600
 h_end = 2000
 compute_widths = True
+
 # 1 ) reading in in-situ data and computing rime mass fraction
 in_situ_data = '/media/sdig/arm-iop/2014/baecc/in-situ/Snow_retr_2014_2015_for_Python.mat'
 PIP_data = loadmat(in_situ_data, mat_dtype=True)
@@ -25,7 +24,6 @@ rmf_pip = {'var': rmf_pip, 'ts': piptime, 'name': 'rime mass fraction', 'dimlabe
            'filename': in_situ_data, 'file_history': '', 'paraminfo':{'location':'Hyytiälä'}}
 
 # 2) identify time chunks in in-situ data
-
 jumps = np.where(np.diff(piptime) > 3600)[0]
 i = 0
 while piptime[ jumps[i]] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0, 0)):
@@ -35,6 +33,7 @@ while piptime[ jumps[i]] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0
         t_sta = functions.h.ts_to_dt(piptime[jumps[i - 1] + 1])
     t_end = functions.h.ts_to_dt(piptime[jumps[i]])
     i += 1
+    
     # 3) read in the data for all of the chunks
     print(f'time interval from {t_sta.strftime("%Y%m%d %H:%M")} to {t_end.strftime("%Y%m%d %H:%M")} \n')
     # cloud-base height
@@ -44,7 +43,13 @@ while piptime[ jumps[i]] < functions.h.dt_to_ts(datetime.datetime(2014, 3, 31, 0
     Zg = rf.remove_broken_timestamp_arm(larda.read("KAZR", "Ze", [t_sta, t_end], [h_sta, h_end]))
     MDV = rf.remove_broken_timestamp_arm(larda.read("KAZR", "mdv", [t_sta, t_end], [h_sta, h_end]))
     sw = rf.remove_broken_timestamp_arm(larda.read("KAZR", "sw", [t_sta, t_end], [h_sta, h_end]))
-    np.putmask(sw['var'], abs(sw['var']) > 10, np.nan)
+    # read in signal-to-noise ratio for masking non-cloudy pixels
+    snr = rf.remove_broken_timestamp_arm(larda.read("KAZR", "snr", [t_sta, t_end], [h_sta, h_end]))
+
+    np.putmask(sw['var'], snr['var'] < 0, np.nan)
+    np.putmask(MDV['var'], snr['var'] < 0, np.nan)
+    np.putmask(Zg['var'], snr['var'] < 0, np.nan)
+
     Zg['var'] = functions.h.lin2z(Zg['var'])
     if compute_widths:
         widths, ts_widths = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_compute_width,
@@ -101,7 +106,7 @@ if compute_widths:
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all, MDV_all, identity_line=False, colorbar=True, title=True)
     fig.savefig(plot_dir + f'widths_MDV.png')
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all, Zg_all, color_by=rmf_all, identity_line=False,
-                                                             colorbar=True, scale='lin', title=True)
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0,0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
 
@@ -127,6 +132,9 @@ fig, ax = functions.pyLARDA.Transformations.plot_scatter(Zg_all_below, MDV_all_b
 ax.set_xlim([-30, 30])
 fig.savefig(plot_dir + f'Ze_MDV.png')
 
+fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, MDV_all_below, identity_line=False, colorbar=True, title=True)
+fig.savefig(plot_dir + f'rmf_MDV.png')
+
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(sw_all_below, MDV_all_below, identity_line=False, colorbar=True, title=True)
 ax.set_xlim([0, 2])
 fig.savefig(plot_dir + f'sw_MDV.png')
@@ -134,9 +142,6 @@ fig.savefig(plot_dir + f'sw_MDV.png')
 if compute_widths:
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all_below, MDV_all_below, identity_line=False, colorbar=True, title=True)
     fig.savefig(plot_dir + f'widths_MDV.png')
-
-fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, MDV_all_below, identity_line=False, colorbar=True, title=True)
-fig.savefig(plot_dir + f'rmf_MDV.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, sw_all_below, identity_line=False, colorbar=True, title=True)
 ax.set_ylim([0, 2])
@@ -147,18 +152,18 @@ if compute_widths:
     fig.savefig(plot_dir + 'rmf_widths.png')
 
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all_below, Zg_all_below, color_by=rmf_all, identity_line=False,
-                                                             colorbar=True, scale='lin', title=True)
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(sw_all_below, Zg_all_below, color_by=rmf_all, identity_line=False,
-                                                         colorbar=True, scale='lin', title=True)
+                                                         colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
 ax.set_ylim([-40, 20])
 ax.set_xlim([0, 2])
 fig.savefig(plot_dir + 'sw_Zg_by_rmf.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(MDV_all_below, Zg_all_below, color_by=rmf_all, identity_line=False,
-                                                         colorbar=True, scale='lin', title=True)
+                                                         colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
 ax.set_ylim([-40, 20])
 fig.savefig(plot_dir + 'MDV_Zg_by_rmf.png')
 
@@ -177,7 +182,7 @@ if compute_widths:
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all_above, MDV_all_above, identity_line=False, colorbar=True, title=True)
     fig.savefig(plot_dir + f'widths_MDV.png')
     fig, ax = functions.pyLARDA.Transformations.plot_scatter(widths_all_above, Zg_all_above, color_by=rmf_all, identity_line=False,
-                                                             colorbar=True, scale='lin', title=True)
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
     ax.set_ylim([-40, 20])
     fig.savefig(plot_dir + 'width_Zg_by_rmf.png')
 
@@ -204,7 +209,7 @@ fig, ax = functions.pyLARDA.Transformations.plot_scatter(rmf_all, sw_all_above, 
 fig.savefig(plot_dir + 'rmf_widths.png')
 
 fig, ax = functions.pyLARDA.Transformations.plot_scatter(MDV_all_above, Zg_all_above, color_by=rmf_all, identity_line=False,
-                                                         colorbar=True, scale='lin', title=True)
+                                                         colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
 ax.set_ylim([-40, 20])
 fig.savefig(plot_dir + 'MDV_Zg_by_rmf.png')
 
