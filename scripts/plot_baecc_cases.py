@@ -105,6 +105,10 @@ def plot_casestudy_baecc(case_study):
     spectrum_edge_width = functions.pyLARDA.Transformations.interpolate2d(spectrum_edge_width, new_time=MDV['ts'],
                                                                           new_range=MDV['rg'], method='nearest')
 
+    skewness, ts_skewness = rf.read_apply("KAZR", "spec", [t_sta, t_end], [h_sta, h_end], rf.denoise_and_get_skewness, larda=larda)
+    skewness = functions.h.put_in_container(skewness, MDV, ts=ts_skewness, name='skewness', var_units='')
+    skewness = functions.pyLARDA.Transformations.interpolate2d(skewness, new_time=Zg['ts'])
+
     # remap the soundings to the time resolution of the spectrum edge width
     if sounding_container['ts'].shape[0] > 1:
         sounding_container = functions.pyLARDA.Transformations.interpolate2d(sounding_container,
@@ -140,6 +144,11 @@ def plot_casestudy_baecc(case_study):
     rmf_pip, piptime = rf.rimed_mass_fraction_PIP(PIP_data)
     rmf_pip = {'var': rmf_pip, 'ts': piptime, 'name': 'rime mass fraction', 'dimlabel': ['time'],
                'mask': np.isnan(rmf_pip), 'var_lims': [0, 1], 'system': 'PIP', 'var_unit': 'unitless'}
+    rmf_all = functions.pyLARDA.Transformations.interpolate1d(rmf_pip, new_time=Zg['ts'])
+    rmf_all['var'] = np.tile(rmf_all['var'][:, np.newaxis], MDV_corr['var'].shape[1])
+    rmf_all['rg'] = MDV_corr['rg']
+    rmf_all['mask'] = rmf_all['var'] < 0
+
 
     # plotting
     fig, ax = functions.pyLARDA.Transformations.plot_timeheight(rime_fraction, title=True, time_diff_jumps=30 * 60)
@@ -197,6 +206,10 @@ def plot_casestudy_baecc(case_study):
     fig, ax = functions.pyLARDA.Transformations.plot_timeheight(MDV_corr, title=True)
     fig.savefig(case_study['plot_dir'] + f'MDV_corr_fine_{t_sta.strftime("%Y%M%d%H%M")}_'
     f'{t_end.strftime("%Y%m%d%H%M")}.png')
+
+    fig, ax = functions.pyLARDA.Transformations.plot_scatter(skewness, spectrum_edge_width, color_by=rmf_all, identity_line=False,
+                                                             colorbar=True, scale='lin', title=True, c_lim=[0, 0.8])
+    fig.savefig(case_study['plot_dir'] + 'width_skewness_by_rmf.png')
 
 if __name__ == '__main__':
 

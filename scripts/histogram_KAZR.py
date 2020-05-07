@@ -81,7 +81,7 @@ np.putmask(MDV_all_below['var'], cbh_mask_all['var'], np.nan)
 sw_all_below = copy.deepcopy(sw_all)
 np.putmask(sw_all_below['var'], cbh_mask_all['var'], np.nan)
 
-fig, ax = plt.hist(Zg_all_below)
+fig, ax = plt.hist(Zg_all_below, bins='auto')
 fig.savefig(plot_dir + 'histogram_Zg.png')
 
 # above cloud base height
@@ -92,6 +92,6 @@ np.putmask(Zg_all_above['var'], cbh_mask_all['var'], np.nan)
 MDV_all_above = copy.deepcopy(MDV_all)
 np.putmask(MDV_all_above['var'], cbh_mask_all['var'], np.nan)
 
-fig, ax = plt.hist(Zg_all_above)
+fig, ax = plt.hist(Zg_all_above, bins='auto')
 fig.savefig(plot_dir + 'histogram_Zg.png')
 

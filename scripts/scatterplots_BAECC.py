@@ -16,12 +16,16 @@ h_end = 2000
 compute_widths = True
 
 # 1 ) reading in in-situ data and computing rime mass fraction
-in_situ_data = '/media/sdig/arm-iop/2014/baecc/in-situ/Snow_retr_2014_2015_for_Python.mat'
-PIP_data = loadmat(in_situ_data, mat_dtype=True)
+
+pip_config = toml.load('../casestudies_toml/path_to_pip.toml')
+
+# read in PAMTRA forward simulated in-situ spectra and the original in-situ PIP data
+
+PIP_data = loadmat(pip_config['pip_path']['path'])
 rmf_pip, piptime = rf.rimed_mass_fraction_PIP(PIP_data)
 rmf_pip = {'var': rmf_pip, 'ts': piptime, 'name': 'rime mass fraction', 'dimlabel': ['time'],
            'mask': np.isnan(rmf_pip), 'var_lims': [0, 1], 'system': 'PIP', 'var_unit': 'unitless',
-           'filename': in_situ_data, 'file_history': '', 'paraminfo':{'location':'Hyytiälä'}}
+           'filename': pip_config['pip_path']['path'], 'file_history': '', 'paraminfo':{'location':'Hyytiälä'}}
 
 # 2) identify time chunks in in-situ data
 jumps = np.where(np.diff(piptime) > 3600)[0]
