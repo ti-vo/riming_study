@@ -6,6 +6,7 @@ import pyLARDA.helpers as h
 from itertools import groupby
 import matplotlib.pyplot as plt
 
+
 def rolling_window(a, window):
     """
     Args:
@@ -23,6 +24,47 @@ def rolling_window(a, window):
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
+
+def rolling_window_lastaxis(a, window):
+    """Directly taken from Erik Rigtorp's post to numpy-discussion.
+    <http://www.mail-archive.com/numpy-discussion@scipy.org/msg29450.html>"""
+    if window < 1:
+        raise ValueError("`window` must be at least 1.")
+    if window > a.shape[-1]:
+        raise ValueError("`window` is too long.")
+    shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
+    strides = a.strides + (a.strides[-1],)
+    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
+
+
+def rolling_window_firstaxis(a, window):
+    """ murks """
+    num_axes = len(a.shape)
+    b = np.swapaxes(a, 0, num_axes-1)
+    c = rolling_window_lastaxis(b, window)
+    return d
+
+def rolling_window_nd(a, window):
+    """
+    https://stackoverflow.com/questions/4936620/using-strides-for-an-efficient-moving-average-filter
+     ...because we're storing temporary arrays that are much bigger than our original array on each step of mean
+     (or std or whatever), this is not at all memory efficient! It's also not going to be terribly fast, either...
+    Args:
+        a: array, e.g. np.zeros((10,10))
+        window: tuple, e.g. (3,3)
+
+    Returns:
+
+    """
+    if not hasattr(window, '__iter__'):
+        return rolling_window_lastaxis(a, window)
+    for i, win in enumerate(window):
+        if win > 1:
+            a = a.swapaxes(i, -1)
+            a = rolling_window_lastaxis(a, win)
+            a = a.swapaxes(-2, i)
+    return a
 
 
 def air_density_correction(MDV_container, pressure="standard", temperature="standard"):
@@ -97,7 +139,8 @@ def compute_width(spectra, **kwargs):
     wrapper for width_fast; compute Doppler spectrum edge width
     Args:
         spectra: larda dictionary of spectra
-
+        **kwargs: To be passed on to self.width_fast:
+            thresh_1, thresh_2
     Returns:
 
     """
@@ -231,6 +274,7 @@ def skewness_from_denoised(spectra):
             #moments['kurt'][iR_tot, iT] = kurt
 
     return moments
+
 
 def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelta(hours=1), **kwargs):
     """
