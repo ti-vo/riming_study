@@ -286,8 +286,10 @@ def read_apply(system, variable, time, rg, function, timedelta=datetime.timedelt
     idx_b = np.logical_and(ts < h.dt_to_ts(time[1]), ts > h.dt_to_ts(time[0]))
     outp = outp[idx_b, :]
     ts = ts[idx_b]
-    idx_a = np.logical_and(inp['rg'] < rg[1], inp['rg'] > rg[0])
-    outp = outp[:, idx_a]
+    if not len(rg) == 1:
+        # if we're not reading in a single range gate, crop it
+        idx_a = np.logical_and(inp['rg'] < rg[1], inp['rg'] > rg[0])
+        outp = outp[:, idx_a]
 
     return outp, ts
 
