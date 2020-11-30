@@ -144,13 +144,36 @@ def compute_width(spectra, **kwargs):
     Returns:
 
     """
-    widths_array = width_fast(spectra['var'], **kwargs)
+    widths_array = width_fast(spectra, **kwargs)
     vel_res = abs(np.median(np.diff(spectra['vel'])))
     width = vel_res*widths_array
     np.putmask(width, (width < 0), np.nan)
 
     return width
 
+def threshold_for_width(x):
+
+    def lowest_chirp(r):
+        y = 0.0017757097 * (r / 566.42365)**2  # Chirp 1 LIMRAD deepconv values
+        return y
+
+    def second_chirp(r):
+        y = 0.0036185698 * (r / 1878.1205)**2  # Chirp 2 LIMRAD deepconv values
+        return y
+
+    def third_chirp(r):
+        y = 0.028898994 * (r / 7631.7495)**2  # Chirp 3 LIMRAD deepconv values
+        return y
+
+    if x <= 1192.4708:
+        thresh = lowest_chirp(x)
+    elif (x > 1192.4708) & (x <= 6975.8765):
+        thresh = second_chirp(x)
+    elif x > 6975.8765:
+        thresh = third_chirp(x)
+    return thresh
+
+tfw_vec = np.vectorize(threshold_for_width)
 
 def width_fast(spectra, **kwargs):
     """
@@ -163,6 +186,8 @@ def width_fast(spectra, **kwargs):
         2D array of widths (measured in number of bins, has to be multiplied by Doppler velocity resolution)
 
     """
+    spectra_range = spectra['rg']
+    spectra = spectra['var']
     # define the threshold above which edges are found as the larger one of either
     # 0.05% of the peak reflectivity, or the minimum of the spectrum + 6 dBZ
     thresh_1 = 6 if not 'thresh1' in kwargs else kwargs['thresh1']
@@ -170,6 +195,10 @@ def width_fast(spectra, **kwargs):
     bin_number = spectra.shape[2]
 
     thresh = np.maximum(thresh_2*np.nanmax(spectra, axis=2), np.nanmin(spectra, axis=2) * 10**(thresh_1/10))
+    # overwrite this with -25 dBZ for 500 m bin
+    thresh = np.full(spectra.shape[0:2], 10**(0.1*-25)) #/spectra.shape[2])
+
+    thresh = tfw_vec(np.repeat(spectra_range[np.newaxis, :], spectra.shape[0], axis=0))
 
     # find the first bin where spectrum is larger than threshold
     first = np.argmax(spectra > np.repeat(thresh[:, :, np.newaxis], bin_number, axis=2), axis=2)
@@ -184,6 +213,7 @@ def width_fast(spectra, **kwargs):
     width = last - first
     np.putmask(width, width==512, -9999)
     return width
+
 
 
 def denoise_and_compute_width(spectra, **kwargs):
@@ -405,6 +435,9 @@ def apply_function_timeheight_grid(fun, container, new_range, new_time, mask_thr
             array([[  2.33333333,   7.        ],
             [  7.        , 800.        ]])
     """
+    # check dimensions
+
+
     # apply mask of container, fill with np.nan
     np.putmask(container['var'], container['mask'], np.nan)
 
