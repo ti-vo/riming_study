@@ -38,12 +38,6 @@ def rolling_window_lastaxis(a, window):
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
-def rolling_window_firstaxis(a, window):
-    """ murks """
-    num_axes = len(a.shape)
-    b = np.swapaxes(a, 0, num_axes-1)
-    c = rolling_window_lastaxis(b, window)
-    return d
 
 def rolling_window_nd(a, window):
     """
@@ -677,3 +671,18 @@ def turbulence_broadening(wind_speed, variance_MDV, **kwargs):
 
     #sigma_T_container = h.put_in_container(sigma_T, variance_MDV, var_lims=[0, 2], name='sigma_T')
     return sigma_T
+
+def unrimed_snow_SI(Dmax):
+    alpha = -1.0053/1000*100**(2.05)
+    beta = 1.05
+    m_us = alpha * Dmax**beta
+    return m_us
+
+def graupel_SI(Dmax):
+    rho_rime = 699 #kg/m^3 , Seifert et al 2019 - High Density Rime
+    m_g = np.pi/5 * rho_rime * Dmax**3
+    return m_g
+
+def compute_M(mass, Dmax):
+    M = (mass - unrimed_snow_SI(Dmax)) / graupel_SI(Dmax)
+    return M
