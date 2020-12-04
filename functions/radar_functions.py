@@ -503,18 +503,31 @@ def regrid_integer_timeheight(container, new_range, new_time, fraction=0.9):
     return out_array
 
 
-def rimed_mass_fraction_dmitri(vd_mean_pcor_sealevel):
+def rimed_mass_fraction_dmitri(vd_mean_pcor_sealevel, frequency=35):
     """
     Function to compute rime mass fraction from mean Doppler velocity
 
     :param vd_mean_pcor_sealevel: Mean Doppler velocity, corrected for air density (sea level)
+    :param frequency: radar frequency (GHz); defaults to 35. For different frequencies, different p1 to p5 factors are
+    used in the polynomial fit
     :return: Rimed mass fraction derived from Dmitri Moisseev's fit (Kneifel & Moisseev 2020)
     """
-    p1 = 0.07018
-    p2 = -0.5427
-    p3 = 1.265
-    p4 = -0.5018
-    p5 = -0.0584
+    if frequency == 35:
+        p1 = 0.0791
+        p2 = -0.5965
+        p3 = 1.362
+        p4 = -0.5525
+        p5 = -0.0514
+
+    elif frequency == 94:
+        p1 = 0.0961
+        p2 = -0.6073
+        p3 = 1.032
+        p4 = 0.2212
+        p5 = -0.4358
+
+    else:
+        NameError("frequency not in considered cases (35 or 94 GHz)")
 
     vd_mean_pcor_pos = -1 * vd_mean_pcor_sealevel
 
